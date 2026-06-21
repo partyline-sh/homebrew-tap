@@ -2,26 +2,26 @@
 cask "partyline" do
   binary "partyline", target: "ptln"
 
-  version "0.1.62"
+  version "0.1.63"
 
   on_macos do
     on_intel do
-      sha256 "027f85ba5275c7c99631125aec717c787a35aad1676735cbd6352a173d6fe5c6"
+      sha256 "48d0f4fe829cd643f3b8a51f0a4e28d50a05435ba5387513ad8046f785a34385"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_darwin_amd64.tar.gz"
     end
     on_arm do
-      sha256 "a45970a165cf4c7fff858f3d11a5c6ea819c0b1d5ee3f22c60fd28ec16d235fc"
+      sha256 "7cdb3462e52331ea04a25f861c39a23916c86096464167461aafa874f8a81048"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_darwin_arm64.tar.gz"
     end
   end
 
   on_linux do
     on_intel do
-      sha256 "f185b680bb949bf76f18598d73f3c54057e465896654437148679a757f10beaf"
+      sha256 "3f6ece51d426c7b11dcb430cd75de702e4b2ff38b9a1b17fba234ac50db2efa6"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_linux_amd64.tar.gz"
     end
     on_arm do
-      sha256 "b31bb932b9c3105bb6c2786496de8080d7f161e92af9c98ad5e97f0bd4ae0da0"
+      sha256 "5c792fe5d39aaefae1037441a48e8a1043a0099f173d6f8967d3f7b7b4087be0"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_linux_arm64.tar.gz"
     end
   end
