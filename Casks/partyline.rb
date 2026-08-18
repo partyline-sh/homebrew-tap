@@ -7,26 +7,145 @@ cask "partyline" do
   manpage "partyline.1"
   manpage "ptln.1"
 
-  version "0.75.0"
+  # Verification is not optional, so neither is the verifier. Making it a real dependency
+  # is strictly kinder than aborting with "install cosign and try again" — brew is a
+  # package manager; let it fetch the package.
+  depends_on formula: "cosign"
+
+  preflight do
+    require "tmpdir"
+
+    tag      = "v#{version}"
+    asset    = cask.url.to_s.split("/").last
+    pinned   = cask.sha256.to_s
+    base     = "https://github.com/partyline-sh/cli/releases/download/#{tag}"
+    issuer   = "https://token.actions.githubusercontent.com"
+    identity = "https://github.com/partyline-sh/partyline/.github/workflows/release.yml@refs/tags/#{tag}"
+
+    manual = <<~MANUAL
+
+      Nothing was installed. To check this release by hand:
+
+        curl -fLO #{base}/checksums.txt
+        curl -fLO #{base}/checksums.txt.sigstore.json
+        cosign verify-blob checksums.txt \\
+          --bundle checksums.txt.sigstore.json \\
+          --certificate-oidc-issuer #{issuer} \\
+          --certificate-identity #{identity}
+        # on cosign 2.x, add --new-bundle-format to that command
+
+      Full instructions: https://partyline.sh/docs#verify-a-release-yourself
+      If you believe this is a false alarm: https://github.com/partyline-sh/cli/issues
+    MANUAL
+
+    # A cask with `sha256 :no_check` would make the whole chain vacuous. Refuse rather
+    # than "verify" nothing.
+    unless pinned.match?(/\A[0-9a-f]{64}\z/)
+      raise "partyline: this cask does not pin a sha256 (#{pinned.inspect}), so the signed checksums.txt cannot be tied to what brew downloaded.#{manual}"
+    end
+
+    cosign = begin
+      bin = Formula["cosign"].opt_bin/"cosign"
+      bin.exist? ? bin.to_s : "cosign"
+    rescue StandardError
+      "cosign"
+    end
+
+    help = begin
+      result = system_command(cosign, args: ["verify-blob", "--help"], print_stdout: false)
+      "#{result.stdout}#{result.stderr}"
+    rescue StandardError => e
+      raise "partyline: cosign is not usable (#{e.message.lines.first.to_s.strip}), so this release's signature cannot be verified. Refusing to install unverified binaries.#{manual}"
+    end
+
+    Dir.mktmpdir do |dir|
+      fetch = lambda do |name|
+        begin
+          system_command("/usr/bin/curl",
+                         args:         ["-fsSL", "#{base}/#{name}", "-o", "#{dir}/#{name}"],
+                         print_stdout: false)
+        rescue StandardError
+          raise "partyline: could not download #{name} from #{base} — the release is missing an asset needed to verify it, so nothing was installed.#{manual}"
+        end
+        "#{dir}/#{name}"
+      end
+
+      checksums = fetch.call("checksums.txt")
+
+      # cosign 2.4-2.x reads the Sigstore bundle only with --new-bundle-format; 3.x reads
+      # it and removed both that flag and detached blob verification; <=2.3 has neither and
+      # needs the detached .sig + .pem. Releases publish all three assets for this reason.
+      # Detected from the flags this cosign advertises, not a parsed version string.
+      verify_args = if help.include?("--new-bundle-format")
+        ["--bundle", fetch.call("checksums.txt.sigstore.json"), "--new-bundle-format"]
+      elsif help.include?("--signature")
+        ["--signature", fetch.call("checksums.txt.sig"),
+         "--certificate", fetch.call("checksums.txt.pem")]
+      else
+        ["--bundle", fetch.call("checksums.txt.sigstore.json")]
+      end
+
+      ohai "Verifying release signature (signer: #{identity})"
+      begin
+        system_command(cosign,
+                       args:         ["verify-blob", checksums, *verify_args,
+                                      "--certificate-oidc-issuer", issuer,
+                                      "--certificate-identity", identity],
+                       print_stdout: false)
+      rescue StandardError
+        raise "partyline: SIGNATURE VERIFICATION FAILED for checksums.txt of #{tag}. It is not signed by #{identity}, so these bytes did not come out of partyline's release pipeline at this tag. Treat this download as untrusted.#{manual}"
+      end
+
+      # NEGATIVE CONTROL (same reasoning as install.sh). A verifier that approves everything
+      # looks identical to a real one on the happy path, and is exactly what a bypass looks
+      # like — a shim named `cosign` ahead of the real one on PATH. So make this cosign
+      # REJECT the same file with a line appended before believing it accepted the original.
+      control = "#{dir}/negative-control.txt"
+      File.write(control, "#{File.read(checksums)}0000000000000000000000000000000000000000000000000000000000000000  not-a-real-file.tar.gz\n")
+      accepted_tampered = begin
+        system_command(cosign,
+                       args:         ["verify-blob", control, *verify_args,
+                                      "--certificate-oidc-issuer", issuer,
+                                      "--certificate-identity", identity],
+                       print_stdout: false)
+        true
+      rescue StandardError
+        false
+      end
+      if accepted_tampered
+        raise "partyline: the cosign on this machine (#{cosign}) ACCEPTED a deliberately altered checksums.txt. It is not verifying anything, so the check above means nothing. Refusing to install on the strength of a check that passes on any input.#{manual}"
+      end
+
+      signed = File.readlines(checksums).any? do |line|
+        sum, name = line.split
+        sum == pinned && name == asset
+      end
+      unless signed
+        raise "partyline: #{asset} with sha256 #{pinned} is NOT listed in the signed checksums.txt for #{tag} — the signature is genuine but it does not cover what this cask would install.#{manual}"
+      end
+    end
+  end
+
+  version "0.76.0"
 
   on_macos do
     on_intel do
-      sha256 "d5a79b90a4167ca8f6ba37c63ec79f544342e118ba80c82d02afaa6edef42237"
+      sha256 "8825b8ef9638c4a560f403705b19528ea819370be9806e16c9794c68157366f9"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_darwin_amd64.tar.gz"
     end
     on_arm do
-      sha256 "69c47382c6caad44fd8e8a71953e92a169b44abb01c5bcb63634a897884061bd"
+      sha256 "1e8250b70c1972fc692c9d40449b44050472b4e11ba426d07d190c4a1e2d4263"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_darwin_arm64.tar.gz"
     end
   end
 
   on_linux do
     on_intel do
-      sha256 "b70897f035619f4d9f78f1841b3b12424e1457429f53df6ba20d81ac5e9fb975"
+      sha256 "62869cdf57cb4420b180ddcf06ee3b340bad926e17875505783d5191a1b9e646"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_linux_amd64.tar.gz"
     end
     on_arm do
-      sha256 "d3c96125052b7b6fcbc9d6585ab92fe7d39a0c14024dc990cce28f09f3010290"
+      sha256 "45268c799a1fcb86727693a5c6c4eaec4a8278a284861096f49c321caa08fc00"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_linux_arm64.tar.gz"
     end
   end
