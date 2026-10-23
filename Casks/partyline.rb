@@ -126,31 +126,31 @@ cask "partyline" do
     end
   end
 
-  version "0.105.30"
+  version "0.106.1"
 
   on_macos do
     on_arm do
-      sha256 "0329dd9967a19128567207009469c81a0f4809b8388d9eeb61d0701c187a0765"
+      sha256 "a775c27f445b296dcd2321fa26559e8772b1f0306bd527fa36d004a6824264ea"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_darwin_arm64.tar.gz"
     end
     on_intel do
-      sha256 "060aaa1ffb969f2e4bf5a7b46b8a3dc9dcc38cfb4b933075c8207521dceb4c85"
+      sha256 "3875ed83f3037f95dd97844aa12d5970f653b001323edf4bbf2ce6efe2e4ff81"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_darwin_amd64.tar.gz"
     end
   end
   on_linux do
     on_arm do
-      sha256 "33be5c14066f3573bd77fd87653aba7aabd94c6e7860114eff60577fd2d59b02"
+      sha256 "c5635da351e3e70f0a72445a8d18b1f1d0df499faa49c365182e70e84efc078f"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_linux_arm64.tar.gz"
     end
     on_intel do
-      sha256 "c7ccf7bb0b5b97683e05ca6a174fe4b3916272780f9437f1a7ee000f73200d60"
+      sha256 "7b311552d6322511074a67e10b2291b3aa1ca86479b180c8ba27dff224a98b2f"
       url "https://github.com/partyline-sh/cli/releases/download/v#{version}/partyline_#{version}_linux_amd64.tar.gz"
     end
   end
 
   name "partyline"
-  desc "One shared terminal, everyone on the line — multiplayer, encrypted terminal sessions for humans and AI agents."
+  desc "Every AI coding session on your machine in one place, and a repo that remembers what the team learned."
   homepage "https://partyline.sh"
 
   livecheck do
